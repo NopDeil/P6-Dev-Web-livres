@@ -1,21 +1,56 @@
+// module.exports = { upload, convertImage };
 const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
 
 const MIME_TYPES = {
-  'image/jpg': 'jpg',
-  'image/jpeg': 'jpg',
-  'image/png': 'png'
+    'image/jpg': 'webp',
+    'image/jpeg': 'webp',
+    'image/png': 'webp',
+    'image/webp': 'webp',
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    callback(null, 'images');
-  },
-  filename: (req, file, callback) => {
-    const name = file.originalname.replace(/[\s.]+/g, '_');
-    const extension = MIME_TYPES[file.mimetype];
-    callback(null, name + Date.now() + '.' + extension);
-  }
-});
+// Utilisation de la mémoire pour le stockage temporaire des images téléchargées
+const storage = multer.memoryStorage();
 
-module.exports = multer({storage: storage}).single('image');
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, callback) => {
+        const extension = MIME_TYPES[file.mimetype];
+        if (!extension) {
+            return callback(new Error('Invalid file type'), false);
+        }
+        callback(null, true);
+    }
+}).single('image');
 
+const convertImage = async (req, res, next) => {
+    if (!req.file) {
+        return next();
+    }
+
+    try {
+        const fileNameWithoutExt = req.file.originalname.replace(/\.[^/.]+$/, "").split(' ').join('_');
+        const newFileName = `resized_${fileNameWithoutExt}_${Date.now()}.webp`;
+
+        // Conversion et redimensionnement de l'image en WebP
+        await sharp(req.file.buffer)
+            .resize(206, 260)  // Redimensionne l'image à 206x260
+            .webp({ quality: 60 })  // Conversion en WebP avec une qualité de 60
+            .toFile(path.join('images', newFileName));  // Sauvegarde dans le dossier images
+
+        // Mise à jour des informations du fichier dans req.file
+        req.file.filename = newFileName;
+        req.file.path = path.join('images', newFileName);
+        req.file.mimetype = 'image/webp';
+        req.file.destination = 'images';
+
+        next();
+    } catch (error) {
+        console.error('Erreur lors de la transformation de l\'image :', error);
+        return res.status(500).json({ error: 'Erreur lors de la transformation de l\'image.' });
+    }
+};
+
+module.exports = { upload, convertImage };
