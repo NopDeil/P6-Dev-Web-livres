@@ -36,8 +36,8 @@ const convertImage = async (req, res, next) => {
 
         // Conversion et redimensionnement de l'image en WebP
         await sharp(req.file.buffer)
-            .resize(206, 260)  // Redimensionne l'image à 206x260
-            .webp({ quality: 60 })  // Conversion en WebP avec une qualité de 60
+            .resize({ width: 206, height: 260, fit: 'inside' })  // Redimensionne l'image à 206x260
+            .webp({ quality: 60, smartSubsample: true })  // Conversion en WebP avec une qualité de 60
             .toFile(path.join('images', newFileName));  // Sauvegarde dans le dossier images
 
         // Mise à jour des informations du fichier dans req.file
