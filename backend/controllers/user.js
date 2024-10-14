@@ -20,7 +20,6 @@ exports.signup = (req, res, next) => {
 };
 
 exports.login = (req, res, next) => {
-  console.log(process.env.TOKEN_SECRET)
   User.findOne({ email: req.body.email })
     .then((user) => {
       if (!user) {
